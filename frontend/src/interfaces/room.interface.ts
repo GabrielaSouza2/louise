@@ -1,6 +1,8 @@
 export class Room {
     private _id: string;
     private _adversary?: string;
+    private _players: Array<{name: string, crowns: number}> = [];
+    private _finished: boolean = false;
 
     userPoints: number = 0;
     adversaryPoints: number = 0;
@@ -19,6 +21,22 @@ export class Room {
 
     get adversary(): string | undefined {
       return this._adversary;
+    }
+
+    get players(): Array<{name: string, crowns: number}> {
+        return this._players;
+    }
+
+    set players(players: Array<{name: string, crowns: number}>) {
+        this._players = players;
+    }
+
+    get finished(): boolean {
+        return this._finished;
+    }
+
+    set finished(value: boolean) {
+        this._finished = value;
     }
     
     addPointToUser(countPoints: number): void {

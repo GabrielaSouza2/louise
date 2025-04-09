@@ -3,7 +3,6 @@ import { Scene } from 'phaser';
 
 export class GameOver extends Scene {
 
-
     private header!: Phaser.GameObjects.Graphics;
     player1Progress!: Phaser.GameObjects.Graphics;
     player2Progress!: Phaser.GameObjects.Graphics;
@@ -39,7 +38,6 @@ export class GameOver extends Scene {
             this.bgMusic.play();
         }
         
-
         // Cria o cabeçalho com dots
         this.header = this.add.graphics();
         this.createHeader();
@@ -47,7 +45,6 @@ export class GameOver extends Scene {
         // Sons de vitória, empate e derrota
         this.winSound = this.sound.add('winSound');
 
-    
         // Texto de Game Over
         this.gameOverText = this.add.text(512, 200, 'E quem ganhou foi...', {
             fontFamily: 'Jacques Francois',
@@ -59,23 +56,46 @@ export class GameOver extends Scene {
             letterSpacing: 5
         }).setOrigin(0.5).setDepth(100);
 
-        // Pontuações simuladas
-        const player1Score = 200;
-        const player2Score = 150;  // Max 200
+        // Busca os dados do jogo através do EventBus
+        EventBus.once('game-data', (gameData: any) => {
+            const players = gameData.players;
+            if (players && players.length > 0) {
+                // Ordena os jogadores por pontuação (crowns)
+                const sortedPlayers = players.sort((a: any, b: any) => b.crowns - a.crowns);
+                
+                // Pega o vencedor (primeiro jogador após ordenação)
+                const winner = sortedPlayers[0];
+                
+                // Anima as barras de progresso para cada jogador
+                let yPos = 300;
+                sortedPlayers.forEach((player: any, index: number) => {
+                    this.animateProgressBar(
+                        player.crowns,
+                        0x000000,
+                        player.name,
+                        300,
+                        yPos + (index * 100)
+                    );
+                });
 
-        // Anima as barras de progresso dos jogadores
-        this.animateProgressBar(player1Score, 0x000000, "Player 1", 300, 300);
-        this.animateProgressBar(player2Score, 0x000000, "Player 2", 300, 400);
-
-        // Após 3 segundos, exibe o vencedor
-        this.time.delayedCall(3000, () => {
-            this.showWinner(player1Score, player2Score);
+                // Após 3 segundos, exibe o vencedor
+                this.time.delayedCall(3000, () => {
+                    // Toca o som de vitória
+                    this.winSound.play();
+                    
+                    // Atualiza o texto para mostrar o vencedor
+                    this.gameOverText.setText(`${winner.name} venceu com ${winner.crowns} pontos!`);
+                });
+            }
         });
 
         // Botão para voltar ao menu
         this.backButton = this.add.text(512, 600, 'Voltar ao Menu', {
-            fontFamily: 'Jacques Francois', fontSize: 32, color: '#C2A385',
-            stroke: '#ffffff', strokeThickness: 6,
+            fontFamily: 'Jacques Francois',
+            fontSize: 32,
+            color: '#C2A385',
+            stroke: '#ffffff',
+            strokeThickness: 6,
             align: 'center'
         }).setOrigin(0.5).setInteractive();
 
@@ -88,7 +108,7 @@ export class GameOver extends Scene {
         });
 
         this.backButton.on('pointerout', () => {
-            this.backButton.setStyle({ color: '#000000' });
+            this.backButton.setStyle({ color: '#C2A385' });
         });
 
         EventBus.emit('current-scene-ready', this);

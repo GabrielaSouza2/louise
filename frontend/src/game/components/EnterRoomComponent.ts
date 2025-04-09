@@ -151,12 +151,23 @@ export class EnterRoomComponent {
     }
 
     private cleanup() {
-        this.nameInput.remove();
-        this.codeInput.remove();
-        this.joinRoomDialog.destroy();
-        this.blocker.destroy();
-        this.cancelBtn.destroy();
-        this.cancelText.destroy();
+        // Remover os inputs do DOM
+        if (this.nameInput) {
+            this.nameInput.remove();
+        }
+        if (this.codeInput) {
+            this.codeInput.remove();
+        }
+
+        // Destruir o container (que já inclui os outros elementos)
+        if (this.joinRoomDialog) {
+            this.joinRoomDialog.destroy();
+        }
+
+        // Destruir o blocker separadamente pois não está no container
+        if (this.blocker) {
+            this.blocker.destroy();
+        }
     }
   
 

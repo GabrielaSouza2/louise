@@ -1,7 +1,6 @@
 // Complete Game class with all logic including UI, music, random letter sequence puzzle, and transitions
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
-import io from 'socket.io-client';
 import { WebSocketService, webSocketService } from '../../services/websocket';
 import { riddlesService } from '../../services/riddles';
 import { roundsService } from '../../services/rounds';
@@ -10,85 +9,152 @@ import { Riddle } from '../../interfaces/riddle.interface';
 import { characters } from '../../helpers/caracteres';
 import { brailleMap } from '../../helpers/brailleMap';
 import { roomService } from '../../services/room';
-import { userService } from '../../services/user';
 import { Subscription } from 'rxjs';
 
 export class Game extends Scene {
-
-    private background!: Phaser.GameObjects.Image;
-    private titleLouise!: Phaser.GameObjects.Text;
-    private timerText!: Phaser.GameObjects.Text;
-    private player1Text!: Phaser.GameObjects.Text;
-    private player2Text!: Phaser.GameObjects.Text;
-    private header!: Phaser.GameObjects.Graphics;
-    private leftClueText!: Phaser.GameObjects.Text;
-    private dotsPuzzle!: Phaser.GameObjects.Graphics;
-    private asciiPuzzleText!: Phaser.GameObjects.Text;
-    private finishPhaseBtn!: Phaser.GameObjects.Text;
-    private checkSolutionBtn!: Phaser.GameObjects.Text;
+    private _background!: Phaser.GameObjects.Image;
+    private _titleLouise!: Phaser.GameObjects.Text;
+    private _timerText!: Phaser.GameObjects.Text;
+    private _player1Text!: Phaser.GameObjects.Text;
+    private _player2Text!: Phaser.GameObjects.Text;
+    private _header!: Phaser.GameObjects.Graphics;
+    private _leftClueText!: Phaser.GameObjects.Text;
+    private _dotsPuzzle!: Phaser.GameObjects.Graphics;
+    private _asciiPuzzleText!: Phaser.GameObjects.Text;
+    private _finishPhaseBtn!: Phaser.GameObjects.Text;
+    private _checkSolutionBtn!: Phaser.GameObjects.Text;
     private timeLeft: number = 60;
     private timerEvent!: Phaser.Time.TimerEvent;
-    private boxLouise!: Phaser.GameObjects.Image;
-    private boxTimer!: Phaser.GameObjects.Image;
-    private boxPlayer1!: Phaser.GameObjects.Image;
-    private boxPlayer2!: Phaser.GameObjects.Image;
-    player1Progress!: Phaser.GameObjects.Graphics;
-    player2Progress!: Phaser.GameObjects.Graphics;
-    boxProgress1!: Phaser.GameObjects.Image;
-    boxProgress2!: Phaser.GameObjects.Image;
-    private player1ProgressValue: number = 0;
-    private player2ProgressValue: number = 0;
-    boxClueText!: Phaser.GameObjects.Image;
-    boxPuzzle!: Phaser.GameObjects.Image;
-    boxBraille!: Phaser.GameObjects.Image;
-    bgMusic!: Phaser.Sound.BaseSound;
+    private _boxLouise!: Phaser.GameObjects.Image;
+    private _boxTimer!: Phaser.GameObjects.Image;
+    private _boxPlayer1!: Phaser.GameObjects.Image;
+    private _boxPlayer2!: Phaser.GameObjects.Image;
+    private readonly _player1Progress!: Phaser.GameObjects.Graphics;
+    private readonly _player2Progress!: Phaser.GameObjects.Graphics;
+    private readonly _boxProgress1!: Phaser.GameObjects.Image;
+    private readonly _boxProgress2!: Phaser.GameObjects.Image;
+    private readonly player1ProgressValue: number = 0;
+    private readonly player2ProgressValue: number = 0;
+    private _boxClueText!: Phaser.GameObjects.Image;
+    private _boxPuzzle!: Phaser.GameObjects.Image;
+    private _boxBraille!: Phaser.GameObjects.Image;
+    private _bgMusic!: Phaser.Sound.BaseSound;
     private resultPopupContainer?: Phaser.GameObjects.Container;
-    private gameOverTriggered = false
+    private gameOverTriggered = false;
 
-    private puzzleBoard: { id: number, hasDot: boolean }[] = [];
-    private puzzleGroup!: Phaser.GameObjects.Container;
+    private _puzzleBoard: { id: number, hasDot: boolean }[] = [];
+    private _puzzleGroup!: Phaser.GameObjects.Container;
   
-    private minMoves: { [key: string]: number} = {
+    private readonly minMoves: { [key: string]: number} = {
         'A': 9, 'B': 8, 'C': 13, 'D': 3, 'E': 11, 'F': 6, 'G': 10, 'H': 7, 'I': 10, 'J': 3, 'K': 7, 'L': 9, 'M': 5, 
         'N': 7, 'O': 7, 'P': 7, 'Q': 3, 'R': 3, 'S': 6, 'T': 3, 'U': 7, 'V': 2, 'W': 4, 'X': 5, 'Y': 1, 'Z': 1
     };
 
-    // private solutionClicks: { [key: string]: number[] } = {
-    //     A: [1, 3, 5, 4, 2, 3, 1, 0, 2], B: [2, 4, 5, 3, 1, 0, 2, 4], C: [2, 4, 5, 3, 1, 0, 2, 4, 5, 3, 1, 0, 2], D: [1, 3, 5],
-    //     E: [1, 3, 5, 4, 2, 3, 1, 0, 2, 3, 5], F: [1, 3, 5, 4, 2, 3], G: [2, 3, 1, 0, 2, 4, 5, 3, 2, 4], H: [1, 3, 2, 0, 1, 3, 5],
-    //     I: [2, 4, 5, 3, 2, 0, 1, 3, 2, 4], J: [2, 3, 5], K: [2, 4, 5, 3, 1, 0, 2], L: [1, 3, 2, 4, 5, 3, 2, 0, 1], M: [1, 3, 2, 4, 5],
-    //     N: [1, 3, 2, 0, 1, 3, 5], O: [1, 3, 2, 4, 5, 3, 1], P: [2, 3, 1, 0, 2, 4, 5], Q: [1, 3, 5], R: [2, 3, 5], S: [2, 3, 5, 4, 2, 3],
-    //     T: [1, 3, 5], U: [2, 4, 5, 3, 2, 0, 1], V: [2, 3], W: [1, 3, 2, 4], X: [2, 3, 1, 0, 2], Y: [2], Z: [2]
-    // };
-      
-    private charSequence: string[] = [];
+    private readonly charSequence: string[] = [];
     private currentCharIndex: number = 0;
     private currentChar: string = '';
     private moveCount: number = 0;
     private points: number = 0;
 
-
-    private puzzleSequence: string[] = [];
-    private brailleArray: string[] = [];
-    private originalBrailleArray: string[] = [];
-    private missingBraillePositions: { [key: string]: number } = {};
+    private _puzzleSequence: string[] = [];
+    private _brailleArray: string[] = [];
+    private _originalBrailleArray: string[] = [];
+    private readonly missingBraillePositions: { [key: string]: number } = {};
 
     private chosenClue: string = '';
     private brailleTranslation: string = '';
 
-    private tryAgainText!: Phaser.GameObjects.Text;
-    private clueTextGroup!: Phaser.GameObjects.Container;
-    private socket: WebSocketService;
-    private propagateStopSub?: Subscription; 
-
+    private _tryAgainText!: Phaser.GameObjects.Text;
+    private _clueTextGroup!: Phaser.GameObjects.Container;
+    private readonly socket: WebSocketService;
+    private readonly propagateStopSub?: Subscription;
 
     constructor() {
         super('Game');
+        this.socket = webSocketService;
         this.initSocket();
     }
 
+    // Getters e setters para as propriedades
+    get background() { return this._background; }
+    set background(value) { this._background = value; }
+
+    get titleLouise() { return this._titleLouise; }
+    set titleLouise(value) { this._titleLouise = value; }
+
+    get timerText() { return this._timerText; }
+    set timerText(value) { this._timerText = value; }
+
+    get player1Text() { return this._player1Text; }
+    set player1Text(value) { this._player1Text = value; }
+
+    get player2Text() { return this._player2Text; }
+    set player2Text(value) { this._player2Text = value; }
+
+    get header() { return this._header; }
+    set header(value) { this._header = value; }
+
+    get leftClueText() { return this._leftClueText; }
+    set leftClueText(value) { this._leftClueText = value; }
+
+    get dotsPuzzle() { return this._dotsPuzzle; }
+    set dotsPuzzle(value) { this._dotsPuzzle = value; }
+
+    get asciiPuzzleText() { return this._asciiPuzzleText; }
+    set asciiPuzzleText(value) { this._asciiPuzzleText = value; }
+
+    get finishPhaseBtn() { return this._finishPhaseBtn; }
+    set finishPhaseBtn(value) { this._finishPhaseBtn = value; }
+
+    get checkSolutionBtn() { return this._checkSolutionBtn; }
+    set checkSolutionBtn(value) { this._checkSolutionBtn = value; }
+
+    get boxLouise() { return this._boxLouise; }
+    set boxLouise(value) { this._boxLouise = value; }
+
+    get boxTimer() { return this._boxTimer; }
+    set boxTimer(value) { this._boxTimer = value; }
+
+    get boxPlayer1() { return this._boxPlayer1; }
+    set boxPlayer1(value) { this._boxPlayer1 = value; }
+
+    get boxPlayer2() { return this._boxPlayer2; }
+    set boxPlayer2(value) { this._boxPlayer2 = value; }
+
+    get boxClueText() { return this._boxClueText; }
+    set boxClueText(value) { this._boxClueText = value; }
+
+    get boxPuzzle() { return this._boxPuzzle; }
+    set boxPuzzle(value) { this._boxPuzzle = value; }
+
+    get boxBraille() { return this._boxBraille; }
+    set boxBraille(value) { this._boxBraille = value; }
+
+    get bgMusic() { return this._bgMusic; }
+    set bgMusic(value) { this._bgMusic = value; }
+
+    get puzzleBoard() { return this._puzzleBoard; }
+    set puzzleBoard(value) { this._puzzleBoard = value; }
+
+    get puzzleGroup() { return this._puzzleGroup; }
+    set puzzleGroup(value) { this._puzzleGroup = value; }
+
+    get puzzleSequence() { return this._puzzleSequence; }
+    set puzzleSequence(value) { this._puzzleSequence = value; }
+
+    get brailleArray() { return this._brailleArray; }
+    set brailleArray(value) { this._brailleArray = value; }
+
+    get originalBrailleArray() { return this._originalBrailleArray; }
+    set originalBrailleArray(value) { this._originalBrailleArray = value; }
+
+    get tryAgainText() { return this._tryAgainText; }
+    set tryAgainText(value) { this._tryAgainText = value; }
+
+    get clueTextGroup() { return this._clueTextGroup; }
+    set clueTextGroup(value) { this._clueTextGroup = value; }
+
     initSocket() {
-        this.socket = webSocketService;
         this.socket.connect('ws://localhost:3000');
     }
 
@@ -327,7 +393,8 @@ export class Game extends Scene {
         const maxColumns = 8;
         const brailleChars = this.brailleTranslation.split('');
     
-        brailleChars.forEach((char, index) => {
+        for (const char of brailleChars) {
+            const index = brailleChars.indexOf(char);
             const x = startX + (index % maxColumns) * charWidth;
             const y = startY + Math.floor(index / maxColumns) * charHeight;
     
@@ -336,7 +403,7 @@ export class Game extends Scene {
                 color: char === ' ' ? '#888888' : '#000000',
                 fontFamily: 'Love Light'
             }).setOrigin(0.5);
-        });
+        }
     }
     
     // puzzle board styling
@@ -345,20 +412,20 @@ export class Game extends Scene {
         this.puzzleGroup = this.add.container(this.boxPuzzle.x - 50, this.boxPuzzle.y - 60);
         const tileWidth = 40, tileHeight = 40, gap = 5;
 
-        for (let i = 0; i < 6; i++) {
-            const col = i % 2, row = Math.floor(i / 2);
+        for (const dot of this.puzzleBoard) {
+            const col = dot.id % 2, row = Math.floor(dot.id / 2);
             const x = col * (tileWidth + gap), y = row * (tileHeight + gap);
             
-            const isEmpty = this.puzzleBoard[i].id === 0;
+            const isEmpty = dot.id === 0;
 
             if (!isEmpty) {
                 const rect = this.add.rectangle(x + tileWidth / 2, y + tileHeight / 2, tileWidth, tileHeight, 0xC2A385).setOrigin(0.5);
-                rect.setInteractive().on('pointerdown', () => this.movePuzzleTile(i));
+                rect.setInteractive().on('pointerdown', () => this.movePuzzleTile(dot.id));
                 this.puzzleGroup.add(rect);
                 
-                if (this.puzzleBoard[i].hasDot) {
-                    const dot = this.add.text(x + tileWidth / 2, y + tileHeight / 2, '●', { fontSize: '24px', color: '#000000' }).setOrigin(0.5);
-                    this.puzzleGroup.add(dot);
+                if (dot.hasDot) {
+                    const dotText = this.add.text(x + tileWidth / 2, y + tileHeight / 2, '●', { fontSize: '24px', color: '#000000' }).setOrigin(0.5);
+                    this.puzzleGroup.add(dotText);
                 }
             }
         }
@@ -388,20 +455,18 @@ export class Game extends Scene {
             this.renderPuzzleBoard();
         }
 
-        const success = this.checkSuccess();
-
         this.checkPuzzleSolution();
     }    
 
     private checkSuccess(): boolean {
 
-        const correct = characters[this.currentChar] ? [...characters[this.currentChar]].sort() : [];
+        const correct = characters[this.currentChar] ? [...characters[this.currentChar]].sort((a, b) => a - b) : [];
 
         // current board
         const current = this.puzzleBoard
             .map((t, i) => (t.hasDot ? i : -1))
             .filter(i => i !== -1)
-            .sort();
+            .sort((a, b) => a - b);
 
         return correct.length === current.length && correct.every((val, idx) => val === current[idx]);
     }
@@ -468,22 +533,19 @@ export class Game extends Scene {
         }
     }  
 
-    // ---------------- Fim da lógica do Puzzle ---------------- //
-
     private startTimer(): void
     {
         this.timeLeft = 120;
         this.timerEvent = this.time.addEvent({
-            delay: 100,
+            delay: 1000,
             callback: () => {
                 this.timeLeft--;
-                if (this.timeLeft < 0) {
-                    this.timeLeft = 0;
-                    this.timerEvent.remove(false);
-                    this.finishPhase();
+                if (this.timeLeft <= 0) {
+                    this.endGame();
                 }
                 this.updateTimerText();
             },
+            callbackScope: this,
             loop: true
         });
     }
@@ -501,11 +563,15 @@ export class Game extends Scene {
     override update () {
         // Simulação de progresso dos jogadores
       
+        // Verifica se o jogo terminou
+        const room = roomService.getRoom();
+        if (room?.finished) {
+            this.endGame();
+        }
     }
 
     private finishPhase(): void
     {
-        const success = this.checkSuccess();
         this.timerEvent.remove(false);
         this.bgMusic.stop();
 
@@ -581,7 +647,7 @@ export class Game extends Scene {
         this.resultPopupContainer.add([box, titleText, subText, continueBtn]);
     }
 
-    private gameover = () => {
+    private readonly gameover = () => {
 
         if (this.gameOverTriggered) return;
             
@@ -617,4 +683,22 @@ export class Game extends Scene {
         }
     }
 
+    // Método para finalizar o jogo e ir para a tela de Game Over
+    private endGame() {
+        if (!this.gameOverTriggered) {
+            this.gameOverTriggered = true;
+            
+            // Obter os dados dos jogadores
+            const room = roomService.getRoom();
+            const gameData = {
+                players: room?.players || []
+            };
+
+            // Emitir os dados do jogo para a cena de Game Over
+            EventBus.emit('game-data', gameData);
+            
+            // Mudar para a cena de Game Over
+            this.scene.start('GameOver');
+        }
+    }
 }

@@ -5,15 +5,15 @@ import { roomService } from '../../services/room';
 import { roundsService } from '../../services/rounds';
 
 export class CreateRoom extends Scene {
-    private createRoomButton: GameObjects.Image;
-    private createRoomText: GameObjects.Text;
+    private readonly createRoomButton: GameObjects.Image;
+    private readonly createRoomText: GameObjects.Text;
     private loadingText: Phaser.GameObjects.Text;
     private loadingBox!: Phaser.GameObjects.Image;
 
     private selectedRounds: number = 3;
-    private roundButtons: GameObjects.Image[] = [];
-    private roundTexts: GameObjects.Text[] = [];
-    private socket: WebSocketService;
+    private readonly roundButtons: GameObjects.Image[] = [];
+    private readonly roundTexts: GameObjects.Text[] = [];
+    private readonly socket: WebSocketService;
 
     private nameDialog!: Phaser.GameObjects.Container;
     private roomName: string = '';
@@ -24,19 +24,16 @@ export class CreateRoom extends Scene {
     private nameInput!: HTMLInputElement;
     private roomInput!: HTMLInputElement;
 
-    constructor(
-
-    ) {
+    constructor() {
         super('CreateRoom');
+        this.socket = webSocketService;
     }
 
     create() {
         const centerX = this.cameras.main.width / 2;
         const centerY = this.cameras.main.height / 2;
 
-        this.socket = webSocketService;
-     
-       // Fundo do título
+        // Fundo do título
         this.add.image(centerX, 80, 'header-button').setScale(6);
 
         // Título
@@ -146,17 +143,28 @@ export class CreateRoom extends Scene {
             fontSize: '18px',
             color: '#000000'
         }).setOrigin(0.5);
+
+        const cancelBtn = this.add.image(centerX, centerY + 130, 'header-button')
+            .setScale(2)
+            .setInteractive();
+
+        const cancelText = this.add.text(centerX, centerY + 130, 'Cancelar', {
+            fontFamily: 'serif',
+            fontSize: '18px',
+            color: '#000000'
+        }).setOrigin(0.5);
     
         confirmBtn.on('pointerup', () => {
-            this.roomInput?.remove();
-            this.nameInput?.remove();
-            this.nameDialog?.destroy();
-            blocker.destroy();
+            this.cleanupDialog(blocker);
             this.confirmRoomName();
+        });
+
+        cancelBtn.on('pointerup', () => {
+            this.cleanupDialog(blocker);
         });
     
         this.nameDialog = this.add.container(0, 0, [
-            box, title, confirmBtn, confirmText
+            box, title, confirmBtn, confirmText, cancelBtn, cancelText
         ]);
     
         const canvasRect = this.game.canvas.getBoundingClientRect();
@@ -194,6 +202,21 @@ export class CreateRoom extends Scene {
             zIndex: '1000',
         });
         document.body.appendChild(this.roomInput);
+    }
+
+    private cleanupDialog(blocker: Phaser.GameObjects.Rectangle) {
+        if (this.roomInput) {
+            this.roomInput.remove();
+        }
+        if (this.nameInput) {
+            this.nameInput.remove();
+        }
+        if (this.nameDialog) {
+            this.nameDialog.destroy();
+        }
+        if (blocker) {
+            blocker.destroy();
+        }
     }
 
     private confirmRoomName() {

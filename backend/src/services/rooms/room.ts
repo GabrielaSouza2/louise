@@ -127,4 +127,22 @@ export class Room {
     startRoom(): void {
         this.started = true;
     }
+
+    // Get the winner of the game
+    public getWinner(): Scores | null {
+        if (!this.finished) {
+            return null;
+        }
+        
+        const sortedPlayers = this.players;
+        if (sortedPlayers.length === 0) {
+            return null;
+        }
+
+        const winner = sortedPlayers[0];
+        return {
+            name: winner.name,
+            crowns: winner.crowns
+        };
+    }
 }
